@@ -483,5 +483,12 @@ namespace Creator.Tool
         {
             RfChangeSectorPassword();
         }
+
+        private void labelSeekWarning_DoubleClick(object sender, EventArgs e)
+        {
+            _device.Close();
+            var issueForm = new Issue();
+            issueForm.Show();
+        }
     }
 }

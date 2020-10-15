@@ -25,9 +25,19 @@ namespace Creator.Lib
                 DataBits = 8,
                 StopBits = StopBits.One,
                 Handshake = Handshake.None,
-                ReadTimeout = 500,
-                WriteTimeout = 500
+                ReadTimeout = 5000,
+                WriteTimeout = 5000
             };
+            _serialPort.Open();
+        }
+
+        public void Close()
+        {
+            _serialPort.Close();
+        }
+
+        public void Open()
+        {
             _serialPort.Open();
         }
 
@@ -239,7 +249,7 @@ namespace Creator.Lib
         {
             var request = PrepareRequest(command, param);
             _serialPort.Write(request, 0, request.Length);
-            Thread.Sleep(500);
+            Thread.Sleep(750);
             var response = new byte[32];
             _serialPort.Read(response, 0, response.Length);
             if (waitForAck) { if ((ResponseCode)response[0] != ResponseCode.Positive) throw new Exception("Received not Positive ACK"); }
@@ -247,7 +257,7 @@ namespace Creator.Lib
 
             if (waitForData)
             {
-                Thread.Sleep(500);
+                Thread.Sleep(750);
                 var data = new byte[32];
                 _serialPort.Read(data, 0, data.Length);
                 return data.TrimEnd();
