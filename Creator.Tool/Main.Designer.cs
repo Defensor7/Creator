@@ -50,6 +50,17 @@
             this.comboBoxPositions = new System.Windows.Forms.ComboBox();
             this.buttonSetPosition = new System.Windows.Forms.Button();
             this.buttonCapture = new System.Windows.Forms.Button();
+            this.groupBoxMifare = new System.Windows.Forms.GroupBox();
+            this.buttonMifareCardSeek = new System.Windows.Forms.Button();
+            this.buttonReset = new System.Windows.Forms.Button();
+            this.buttonBeepOn = new System.Windows.Forms.Button();
+            this.buttonRfReset = new System.Windows.Forms.Button();
+            this.buttonOff = new System.Windows.Forms.Button();
+            this.textBoxResult = new System.Windows.Forms.TextBox();
+            this.buttonMifareReadCardSerial = new System.Windows.Forms.Button();
+            this.buttonCheckSectorPassword = new System.Windows.Forms.Button();
+            this.textBoxSectorPassword = new System.Windows.Forms.TextBox();
+            this.comboBoxSector = new System.Windows.Forms.ComboBox();
             this.groupBoxCom.SuspendLayout();
             this.groupBoxCard.SuspendLayout();
             this.groupBoxChecking.SuspendLayout();
@@ -57,6 +68,7 @@
             this.groupBoxStatusCheckingResult.SuspendLayout();
             this.groupBoxCapturing.SuspendLayout();
             this.groupBoxPosition.SuspendLayout();
+            this.groupBoxMifare.SuspendLayout();
             this.SuspendLayout();
             // 
             // groupBoxCom
@@ -115,13 +127,14 @@
             // 
             // groupBoxChecking
             // 
+            this.groupBoxChecking.Controls.Add(this.buttonReset);
             this.groupBoxChecking.Controls.Add(this.groupBoxStatusHighCheckingResult);
             this.groupBoxChecking.Controls.Add(this.buttonStatusHighChecking);
             this.groupBoxChecking.Controls.Add(this.buttonStatusChecking);
             this.groupBoxChecking.Controls.Add(this.groupBoxStatusCheckingResult);
             this.groupBoxChecking.Location = new System.Drawing.Point(12, 199);
             this.groupBoxChecking.Name = "groupBoxChecking";
-            this.groupBoxChecking.Size = new System.Drawing.Size(886, 684);
+            this.groupBoxChecking.Size = new System.Drawing.Size(886, 691);
             this.groupBoxChecking.TabIndex = 2;
             this.groupBoxChecking.TabStop = false;
             this.groupBoxChecking.Text = "Checking";
@@ -131,7 +144,7 @@
             this.groupBoxStatusHighCheckingResult.Controls.Add(this.listViewStatusHighCheckingResult);
             this.groupBoxStatusHighCheckingResult.Location = new System.Drawing.Point(389, 121);
             this.groupBoxStatusHighCheckingResult.Name = "groupBoxStatusHighCheckingResult";
-            this.groupBoxStatusHighCheckingResult.Size = new System.Drawing.Size(308, 534);
+            this.groupBoxStatusHighCheckingResult.Size = new System.Drawing.Size(308, 488);
             this.groupBoxStatusHighCheckingResult.TabIndex = 4;
             this.groupBoxStatusHighCheckingResult.TabStop = false;
             this.groupBoxStatusHighCheckingResult.Text = "Checking results";
@@ -146,7 +159,7 @@
             this.listViewStatusHighCheckingResult.MultiSelect = false;
             this.listViewStatusHighCheckingResult.Name = "listViewStatusHighCheckingResult";
             this.listViewStatusHighCheckingResult.ShowGroups = false;
-            this.listViewStatusHighCheckingResult.Size = new System.Drawing.Size(302, 504);
+            this.listViewStatusHighCheckingResult.Size = new System.Drawing.Size(302, 458);
             this.listViewStatusHighCheckingResult.TabIndex = 0;
             this.listViewStatusHighCheckingResult.UseCompatibleStateImageBehavior = false;
             this.listViewStatusHighCheckingResult.View = System.Windows.Forms.View.List;
@@ -176,7 +189,7 @@
             this.groupBoxStatusCheckingResult.Controls.Add(this.listViewStatusCheckingResult);
             this.groupBoxStatusCheckingResult.Location = new System.Drawing.Point(23, 121);
             this.groupBoxStatusCheckingResult.Name = "groupBoxStatusCheckingResult";
-            this.groupBoxStatusCheckingResult.Size = new System.Drawing.Size(308, 537);
+            this.groupBoxStatusCheckingResult.Size = new System.Drawing.Size(308, 488);
             this.groupBoxStatusCheckingResult.TabIndex = 3;
             this.groupBoxStatusCheckingResult.TabStop = false;
             this.groupBoxStatusCheckingResult.Text = "Checking results";
@@ -191,7 +204,7 @@
             this.listViewStatusCheckingResult.MultiSelect = false;
             this.listViewStatusCheckingResult.Name = "listViewStatusCheckingResult";
             this.listViewStatusCheckingResult.ShowGroups = false;
-            this.listViewStatusCheckingResult.Size = new System.Drawing.Size(302, 507);
+            this.listViewStatusCheckingResult.Size = new System.Drawing.Size(302, 458);
             this.listViewStatusCheckingResult.TabIndex = 0;
             this.listViewStatusCheckingResult.UseCompatibleStateImageBehavior = false;
             this.listViewStatusCheckingResult.View = System.Windows.Forms.View.List;
@@ -303,11 +316,127 @@
             this.buttonCapture.UseVisualStyleBackColor = true;
             this.buttonCapture.Click += new System.EventHandler(this.buttonCapture_Click);
             // 
+            // groupBoxMifare
+            // 
+            this.groupBoxMifare.Controls.Add(this.comboBoxSector);
+            this.groupBoxMifare.Controls.Add(this.textBoxSectorPassword);
+            this.groupBoxMifare.Controls.Add(this.buttonCheckSectorPassword);
+            this.groupBoxMifare.Controls.Add(this.buttonMifareReadCardSerial);
+            this.groupBoxMifare.Controls.Add(this.buttonOff);
+            this.groupBoxMifare.Controls.Add(this.buttonRfReset);
+            this.groupBoxMifare.Controls.Add(this.buttonBeepOn);
+            this.groupBoxMifare.Controls.Add(this.buttonMifareCardSeek);
+            this.groupBoxMifare.Location = new System.Drawing.Point(915, 411);
+            this.groupBoxMifare.Name = "groupBoxMifare";
+            this.groupBoxMifare.Size = new System.Drawing.Size(885, 479);
+            this.groupBoxMifare.TabIndex = 4;
+            this.groupBoxMifare.TabStop = false;
+            this.groupBoxMifare.Text = "Mifare";
+            // 
+            // buttonMifareCardSeek
+            // 
+            this.buttonMifareCardSeek.Location = new System.Drawing.Point(16, 46);
+            this.buttonMifareCardSeek.Name = "buttonMifareCardSeek";
+            this.buttonMifareCardSeek.Size = new System.Drawing.Size(376, 50);
+            this.buttonMifareCardSeek.TabIndex = 6;
+            this.buttonMifareCardSeek.Text = "Seek";
+            this.buttonMifareCardSeek.UseVisualStyleBackColor = true;
+            this.buttonMifareCardSeek.Click += new System.EventHandler(this.buttonMifareSeek_Click);
+            // 
+            // buttonReset
+            // 
+            this.buttonReset.Location = new System.Drawing.Point(23, 630);
+            this.buttonReset.Name = "buttonReset";
+            this.buttonReset.Size = new System.Drawing.Size(305, 40);
+            this.buttonReset.TabIndex = 7;
+            this.buttonReset.Text = "Reset";
+            this.buttonReset.UseVisualStyleBackColor = true;
+            this.buttonReset.Click += new System.EventHandler(this.buttonReset_Click);
+            // 
+            // buttonBeepOn
+            // 
+            this.buttonBeepOn.Location = new System.Drawing.Point(11, 297);
+            this.buttonBeepOn.Name = "buttonBeepOn";
+            this.buttonBeepOn.Size = new System.Drawing.Size(376, 50);
+            this.buttonBeepOn.TabIndex = 7;
+            this.buttonBeepOn.Text = "Beep On";
+            this.buttonBeepOn.UseVisualStyleBackColor = true;
+            this.buttonBeepOn.Click += new System.EventHandler(this.buttonBeep_Click);
+            // 
+            // buttonRfReset
+            // 
+            this.buttonRfReset.Location = new System.Drawing.Point(16, 433);
+            this.buttonRfReset.Name = "buttonRfReset";
+            this.buttonRfReset.Size = new System.Drawing.Size(376, 40);
+            this.buttonRfReset.TabIndex = 8;
+            this.buttonRfReset.Text = "Reader Reset";
+            this.buttonRfReset.UseVisualStyleBackColor = true;
+            this.buttonRfReset.Click += new System.EventHandler(this.buttonRfReset_Click);
+            // 
+            // buttonOff
+            // 
+            this.buttonOff.Location = new System.Drawing.Point(11, 360);
+            this.buttonOff.Name = "buttonOff";
+            this.buttonOff.Size = new System.Drawing.Size(376, 50);
+            this.buttonOff.TabIndex = 9;
+            this.buttonOff.Text = "Beep Off";
+            this.buttonOff.UseVisualStyleBackColor = true;
+            this.buttonOff.Click += new System.EventHandler(this.buttonOff_Click);
+            // 
+            // textBoxResult
+            // 
+            this.textBoxResult.BackColor = System.Drawing.SystemColors.Window;
+            this.textBoxResult.Location = new System.Drawing.Point(12, 940);
+            this.textBoxResult.Multiline = true;
+            this.textBoxResult.Name = "textBoxResult";
+            this.textBoxResult.ReadOnly = true;
+            this.textBoxResult.Size = new System.Drawing.Size(1301, 89);
+            this.textBoxResult.TabIndex = 5;
+            // 
+            // buttonMifareReadCardSerial
+            // 
+            this.buttonMifareReadCardSerial.Location = new System.Drawing.Point(16, 102);
+            this.buttonMifareReadCardSerial.Name = "buttonMifareReadCardSerial";
+            this.buttonMifareReadCardSerial.Size = new System.Drawing.Size(376, 50);
+            this.buttonMifareReadCardSerial.TabIndex = 10;
+            this.buttonMifareReadCardSerial.Text = "Read Serial";
+            this.buttonMifareReadCardSerial.UseVisualStyleBackColor = true;
+            this.buttonMifareReadCardSerial.Click += new System.EventHandler(this.buttonMifareReadCardSerial_Click);
+            // 
+            // buttonCheckSectorPassword
+            // 
+            this.buttonCheckSectorPassword.Location = new System.Drawing.Point(467, 159);
+            this.buttonCheckSectorPassword.Name = "buttonCheckSectorPassword";
+            this.buttonCheckSectorPassword.Size = new System.Drawing.Size(376, 50);
+            this.buttonCheckSectorPassword.TabIndex = 11;
+            this.buttonCheckSectorPassword.Text = "Check Password";
+            this.buttonCheckSectorPassword.UseVisualStyleBackColor = true;
+            this.buttonCheckSectorPassword.Click += new System.EventHandler(this.buttonCheckSectorPassword_Click);
+            // 
+            // textBoxSectorPassword
+            // 
+            this.textBoxSectorPassword.Location = new System.Drawing.Point(467, 102);
+            this.textBoxSectorPassword.MaxLength = 12;
+            this.textBoxSectorPassword.Name = "textBoxSectorPassword";
+            this.textBoxSectorPassword.Size = new System.Drawing.Size(376, 31);
+            this.textBoxSectorPassword.TabIndex = 13;
+            // 
+            // comboBoxSector
+            // 
+            this.comboBoxSector.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.comboBoxSector.FormattingEnabled = true;
+            this.comboBoxSector.Location = new System.Drawing.Point(467, 46);
+            this.comboBoxSector.Name = "comboBoxSector";
+            this.comboBoxSector.Size = new System.Drawing.Size(121, 33);
+            this.comboBoxSector.TabIndex = 14;
+            // 
             // Main
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(12F, 25F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1631, 1056);
+            this.ClientSize = new System.Drawing.Size(1999, 1056);
+            this.Controls.Add(this.textBoxResult);
+            this.Controls.Add(this.groupBoxMifare);
             this.Controls.Add(this.groupBoxPosition);
             this.Controls.Add(this.groupBoxChecking);
             this.Controls.Add(this.groupBoxCapturing);
@@ -323,7 +452,10 @@
             this.groupBoxCapturing.ResumeLayout(false);
             this.groupBoxCapturing.PerformLayout();
             this.groupBoxPosition.ResumeLayout(false);
+            this.groupBoxMifare.ResumeLayout(false);
+            this.groupBoxMifare.PerformLayout();
             this.ResumeLayout(false);
+            this.PerformLayout();
 
         }
 
@@ -350,6 +482,17 @@
         private System.Windows.Forms.Button buttonSetPosition;
         private System.Windows.Forms.ComboBox comboBoxPositions;
         private System.Windows.Forms.Button buttonCapture;
+        private System.Windows.Forms.GroupBox groupBoxMifare;
+        private System.Windows.Forms.Button buttonMifareCardSeek;
+        private System.Windows.Forms.Button buttonReset;
+        private System.Windows.Forms.Button buttonBeepOn;
+        private System.Windows.Forms.Button buttonRfReset;
+        private System.Windows.Forms.Button buttonOff;
+        private System.Windows.Forms.TextBox textBoxResult;
+        private System.Windows.Forms.Button buttonMifareReadCardSerial;
+        private System.Windows.Forms.ComboBox comboBoxSector;
+        private System.Windows.Forms.TextBox textBoxSectorPassword;
+        private System.Windows.Forms.Button buttonCheckSectorPassword;
     }
 }
 

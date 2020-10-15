@@ -30,6 +30,13 @@ namespace Creator.Tool
             }
 
             comboBoxPositions.DataSource = Enum.GetValues(typeof(Crt570.CardPosition));
+
+            comboBoxSector.Items.AddRange(Enumerable.Range(1, 16).Select(i => (object)i).ToArray());
+        }
+
+        private void ShowResult(string result)
+        {
+            textBoxResult.Text = result;
         }
 
         private void buttonComRefresh_Click(object sender, EventArgs e)
@@ -46,16 +53,17 @@ namespace Creator.Tool
         {
             DispenseCard();
         }
+       
 
         private void DispenseCard()
         {
             try{
             var res = _device.DispenseCard();
-            MessageBox.Show(res.ToString());
+            ShowResult(res.ToString());
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message);
+                ShowResult(ex.Message);
             }
         }
 
@@ -64,11 +72,11 @@ namespace Creator.Tool
             try
             {
                 var res = _device.CaptureCard();
-                MessageBox.Show(res.ToString());
+                ShowResult(res.ToString());
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message);
+                ShowResult(ex.Message);
             }
         }
 
@@ -92,15 +100,15 @@ namespace Creator.Tool
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message);
+                ShowResult(ex.Message);
             }
         }
 
-        private void HighCheckStatus()
+        private void CheckHighStatus()
         {
             try
             {
-                var res = _device.HighCheckStatus();
+                var res = _device.CheckHighStatus();
                 var resString = res.Select(x => x.ToString()).ToList();
                 for (int i = 0; i < listViewStatusHighCheckingResult.Items.Count; i++)
                 {
@@ -116,7 +124,7 @@ namespace Creator.Tool
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message);
+                ShowResult(ex.Message);
             }
         }
 
@@ -127,12 +135,12 @@ namespace Creator.Tool
                var position = (Crt570.CardPosition)comboBoxPositions.SelectedValue;
 
                 var res = _device.SetCardPosition(position);
-                MessageBox.Show(res.ToString());
+                ShowResult(res.ToString());
 
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message);
+                ShowResult(ex.Message);
             }
         }
 
@@ -149,12 +157,12 @@ namespace Creator.Tool
                 if (mode == null) throw new Exception("Capture mode not selected");
 
                 var res = _device.SetCaptureMode((Crt570.CaptureMode)mode);
-                MessageBox.Show(res.ToString());
+                ShowResult(res.ToString());
 
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message);
+                ShowResult(ex.Message);
             }
         }
 
@@ -170,12 +178,105 @@ namespace Creator.Tool
                 if (res == Crt570.CaptureMode.Prohibit) radioButtonCaptureProhibit.Checked = true;
                 if (res == Crt570.CaptureMode.Allow) radioButtonCaptureAllow.Checked = true; 
                 if (res == Crt570.CaptureMode.AllowReadWrite) radioButtonCaptureAllowReadWrite.Checked = true;
-                MessageBox.Show(res.ToString());
+                ShowResult(res.ToString());
 
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message);
+                ShowResult(ex.Message);
+            }
+        }
+
+        private void Reset()
+        {
+            try
+            {
+                var res = _device.Reset();
+                ShowResult(res.ToString());
+            }
+            catch (Exception ex)
+            {
+                ShowResult(ex.Message);
+            }
+        }
+
+        private void RfBeepOn()
+        {
+            try
+            {
+                var res = _device.RfBeepOn();
+                ShowResult(res.ToString());
+            }
+            catch (Exception ex)
+            {
+                ShowResult(ex.Message);
+            }
+        }
+
+        private void RfBeepOff()
+        {
+            try
+            {
+                var res = _device.RfBeepOff();
+                ShowResult(res.ToString());
+            }
+            catch (Exception ex)
+            {
+                ShowResult(ex.Message);
+            }
+        }
+
+        private void RfReset()
+        {
+            try
+            {
+                var res = _device.RfReset();
+                ShowResult(res.ToString());
+            }
+            catch (Exception ex)
+            {
+                ShowResult(ex.Message);
+            }
+        }
+
+        private void RfSeekCard()
+        {
+            try
+            {
+                var res = _device.RfSeekCard();
+                ShowResult(res.ToString());
+            }
+            catch (Exception ex)
+            {
+                ShowResult(ex.Message);
+            }
+        }
+
+        private void RfReadCardSerial()
+        {
+            try
+            {
+                var res = _device.RfReadCardSerial();
+                ShowResult(res);
+            }
+            catch (Exception ex)
+            {
+                ShowResult(ex.Message);
+            }
+        }
+
+        private void RfCheckSectorPassword()
+        {
+            try
+            {
+                var sector = (int)comboBoxSector.SelectedItem;
+                var password = textBoxSectorPassword.Text;
+                var res = _device.RfCheckSectorPassword(sector, password);
+                ShowResult(res.ToString());
+            }
+            catch (Exception ex)
+            {
+                ShowResult(ex.Message);
             }
         }
 
@@ -188,7 +289,7 @@ namespace Creator.Tool
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message);
+                ShowResult(ex.Message);
             }
 
         }
@@ -200,7 +301,7 @@ namespace Creator.Tool
 
         private void buttonStatusHighChecking_Click(object sender, EventArgs e)
         {
-            HighCheckStatus();
+            CheckHighStatus();
         }
 
         private void buttonCaptureApply_Click(object sender, EventArgs e)
@@ -257,6 +358,41 @@ namespace Creator.Tool
         private void buttonCapture_Click(object sender, EventArgs e)
         {
             CaptureCard();
+        }
+
+        private void buttonMifareSeek_Click(object sender, EventArgs e)
+        {
+            RfSeekCard();
+        }
+
+        private void buttonReset_Click(object sender, EventArgs e)
+        {
+            Reset();
+        }
+
+        private void buttonBeep_Click(object sender, EventArgs e)
+        {
+            RfBeepOn();
+        }
+
+        private void buttonRfReset_Click(object sender, EventArgs e)
+        {
+            RfReset();
+        }
+
+        private void buttonOff_Click(object sender, EventArgs e)
+        {
+            RfBeepOff();
+        }
+
+        private void buttonMifareReadCardSerial_Click(object sender, EventArgs e)
+        {
+            RfReadCardSerial();
+        }
+
+        private void buttonCheckSectorPassword_Click(object sender, EventArgs e)
+        {
+            RfCheckSectorPassword();
         }
     }
 }

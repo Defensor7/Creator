@@ -56,4 +56,20 @@ namespace Creator.Lib
             stream.Write(values, 0, values.Length);
         }
     }
+
+    public static class ByteArrayExtensions
+    {
+        public static byte[] TrimEnd(this byte[] data)
+        {
+            var lastIndex = Array.FindLastIndex(data, b => b != 0);
+            Array.Resize(ref data, lastIndex + 1);
+            return data;
+        }
+
+        public static byte[] RemoveLastByte(this byte[] data)
+        {
+            Array.Resize(ref data, data.Length-1);
+            return data;
+        }
+    }
 }

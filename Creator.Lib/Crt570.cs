@@ -3,7 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Ports;
-using System.Linq;
 using System.Text;
 using System.Threading;
 
@@ -35,106 +34,167 @@ namespace Creator.Lib
             _serialPort.Open();
         }
 
+        public ResponseCode RfBeepOn()
+        {
+            var response = SendRequestToReader(CommandCode.RfBeepOn, waitForData: true);
+            var hex = Helpers.ByteArrayToString(new byte[]{response[1]}).ToUpper();
+            return hex == RfResponseCode.Positive ? ResponseCode.Positive : ResponseCode.Negative;
+        }
+
+        public ResponseCode RfBeepOff()
+        {
+            var response = SendRequestToReader(CommandCode.RfBeepOff, waitForData: true);
+            var hex = Helpers.ByteArrayToString(new byte[] { response[1] }).ToUpper();
+            return hex == RfResponseCode.Positive ? ResponseCode.Positive : ResponseCode.Negative;
+        }
+
+        public ResponseCode RfReset()
+        {
+            var response = SendRequestToReader(CommandCode.RfReset);
+            var hex = Helpers.ByteArrayToString(new byte[] { response[0] });
+            var res = (ResponseCode)response[0];
+            return res;
+        }
+
+        public ResponseCode RfSeekCard()
+        {
+            var response = SendRequestToReader(CommandCode.RfCardSeek, waitForData: true);
+            var hex = Helpers.ByteArrayToString(response).ToUpper();
+            return hex == RfResponseCode.Positive ? ResponseCode.Positive : ResponseCode.Negative;
+        }
+
+        public string RfReadCardSerial()
+        {
+            var response = SendRequestToReader(CommandCode.RfReadCardSerial, waitForData: true);
+            var res = Helpers.ByteArrayToString(new []{response[0]}).ToUpper();
+            return res == RfResponseCode.Positive ? Helpers.ByteArrayToString(response).Substring(2).ToUpper() : null;
+        }
+
+        public ResponseCode RfCheckSectorPassword(int sector, string password)
+        {
+           if (password.Length != 12) throw new Exception("Password must be 12 symbol length in HEX format!");
+           var param = sector.ToString("X2") + password.ToUpper();
+            var response = SendRequestToReader(CommandCode.RfCheckSectorPassword, param);
+            var res = Helpers.ByteArrayToString(new[] { response[0] }).ToUpper();
+            switch (res)
+            {
+                case RfResponseCode.Positive:
+                    return ResponseCode.PasswordOk;
+                case RfResponseCode.FailToSeekCard:
+                    return ResponseCode.FailToSeek;
+                case RfResponseCode.PasswordError:
+                    return ResponseCode.PasswordError;
+                default:
+                    return ResponseCode.Negative;
+            }
+        }
+
+        private byte[] SendRequestToReader(string command, string param = null, bool waitForAck = true, bool waitForData = false)
+        {
+            var package = PrepareReaderRequest(command, param);
+            var request = PrepareReaderSeRequest(package);
+            _serialPort.Write(request, 0, request.Length);
+            Thread.Sleep(500);
+            var response = new byte[32];
+            _serialPort.Read(response, 0, response.Length);
+            var data = new byte[32];
+            if (waitForAck)
+            {
+                data = ParseReaderSeResponse(response);
+                if ((ResponseCode)data[0] != ResponseCode.Positive) throw new Exception("Received not Positive ACK");
+            }
+
+            var requestExecute = PrepareReaderSeRequest(new[] { _frameSend });
+            _serialPort.Write(requestExecute, 0, requestExecute.Length);
+
+            if (waitForData)
+            {
+                Thread.Sleep(500);
+                var responseData = new byte[32];
+                _serialPort.Read(responseData, 0, responseData.Length);
+                var dataSe = ParseReaderSeResponse(responseData);
+                data = ParseReaderResponse(dataSe, command);
+            }
+
+            return data.TrimEnd();
+        }
+
+        private byte[] SendRequestToDispenser(string command, string param = null, bool waitForAck = true, bool waitForData = false)
+        {
+            var request = PrepareRequest(command, param);
+            _serialPort.Write(request, 0, request.Length);
+            Thread.Sleep(500);
+            var response = new byte[32];
+            _serialPort.Read(response, 0, response.Length);
+            if (waitForAck) { if ((ResponseCode)response[0] != ResponseCode.Positive) throw new Exception("Received not Positive ACK"); }
+            _serialPort.Write(new[] { _frameSend }, 0, 1);
+
+            if (waitForData)
+            {
+                Thread.Sleep(500);
+                var data = new byte[32];
+                _serialPort.Read(data, 0, data.Length);
+                return data.TrimEnd();
+            }
+
+            return response.TrimEnd();
+        }
+
         public ResponseCode DispenseCard()
         {
-            var request = PrepareRequest(CommandCode.DC.ToString());
-            _serialPort.Write(request, 0, request.Length);
-            //var response1 = new byte[1];
-            //_serialPort.Read(response1, 0, response1.Length);
-            _serialPort.Write(new[] { _frameSend }, 0, 1);
-            Thread.Sleep(1000);
-            var response2 = new byte[1];
-            _serialPort.Read(response2, 0, response2.Length);
-            var result = (ResponseCode)response2[0];
-            return result;
+            var response = SendRequestToDispenser(CommandCode.DispenseCard);
+            var res = (ResponseCode)response[0];
+            return res;
         }
 
         public ResponseCode CaptureCard()
         {
-            var request = PrepareRequest(CommandCode.CP.ToString());
-            _serialPort.Write(request, 0, request.Length);
-            //var response1 = new byte[1];
-            //_serialPort.Read(response1, 0, response1.Length);
-            _serialPort.Write(new[] { _frameSend }, 0, 1);
-            Thread.Sleep(1000);
-            var response2 = new byte[1];
-            _serialPort.Read(response2, 0, response2.Length);
-            var result = (ResponseCode)response2[0];
-            return result;
+            var response = SendRequestToDispenser(CommandCode.CaptureCard);
+            var res = (ResponseCode)response[0];
+            return res;
         }
 
         public ResponseCode SetCardPosition(CardPosition position)
         {
-            var request = PrepareRequest(CommandCode.FC.ToString(), ((int)position).ToString());
-            _serialPort.Write(request, 0, request.Length);
-            _serialPort.Write(new[] { _frameSend }, 0, 1);
-            Thread.Sleep(1000);
-            var response = new byte[1];
-            _serialPort.Read(response, 0, response.Length);
-            var result = (ResponseCode)response[0];
-            return result;
+            var response = SendRequestToDispenser(CommandCode.MoveCard, ((int)position).ToString());
+            var res = (ResponseCode)response[0];
+            return res;
         }
 
         public ResponseCode SetCaptureMode(CaptureMode mode)
         {
-            var request = PrepareRequest(CommandCode.IN.ToString(), ((int)mode).ToString());
-            _serialPort.Write(request, 0, request.Length);
-            _serialPort.Write(new[] { _frameSend }, 0, 1);
-            Thread.Sleep(1000);
-            var response = new byte[1];
-            _serialPort.Read(response, 0, response.Length);
-            var result = (ResponseCode)response[0];
-            return result;
+            var response = SendRequestToDispenser(CommandCode.SetCaptureMode, ((int)mode).ToString());
+            var res = (ResponseCode)response[0];
+            return res;
         }
 
         public CaptureMode GetCaptureMode()
         {
-            var request = PrepareRequest(CommandCode.SI.ToString());
-            _serialPort.Write(request, 0, request.Length);
-            var response1 = new byte[1];
-            _serialPort.Read(response1, 0, response1.Length);
-
-            _serialPort.Write(new[] { _frameSend }, 0, 1);
-            Thread.Sleep(3000);
-            var response2 = new byte[8];
-            _serialPort.Read(response2, 0, response2.Length);
-            var hex = Helpers.ByteArrayToString(new byte[] {response2[3]});
+            var response = SendRequestToDispenser(CommandCode.GetCaptureMode, waitForData: true);
+            var data = ParseDispenserResponse(response);
+            var hex = Helpers.ByteArrayToString(new byte[] { data[0] });
             var result = (CaptureMode)Convert.ToInt16(hex);
             return result;
         }
 
         public ResponseCode Reset()
         {
-            var request = PrepareRequest(CommandCode.RS.ToString());
-            _serialPort.Write(request, 0, request.Length);
-            _serialPort.Write(new[] { _frameSend }, 0, 1);
-            Thread.Sleep(1000);
-            var response = new byte[1];
-            _serialPort.Read(response, 0, response.Length);
-            var result = (ResponseCode)response[0];
-            return result;
+            var response = SendRequestToDispenser(CommandCode.Reset);
+            var res = (ResponseCode)response[0];
+            return res;
         }
 
         public List<CheckStatusCode> CheckStatus()
         {
-            var request = PrepareRequest(CommandCode.RF.ToString());
-            _serialPort.Write(request, 0, request.Length);
-            Thread.Sleep(500);
-            var response = new byte[8];
-            _serialPort.Read(response, 0, response.Length);
+            var response = SendRequestToDispenser(CommandCode.CheckStatus, waitForData: true);
 
-            _serialPort.Write(new[] { _frameSend }, 0, 1);
-            Thread.Sleep(500);
-            var response2 = new byte[8];
-            _serialPort.Read(response2, 0, response2.Length);
-
-            var correctCode = Encoding.ASCII.GetBytes(ResponseCode.SF.ToString());
-            if (response2[1] == correctCode[0] && response2[2] == correctCode[1])
+            var correctCode = Helpers.StringToByteArray(CommandCode.CheckStatusResponse);
+            if (response[1] == correctCode[0] && response[2] == correctCode[1])
             {
                 var statusCodes = new byte[3];
-                statusCodes[0] = (byte)(response2[3] & 0x0F);
-                statusCodes[1] = (byte)(response2[4] & 0x0F);
-                statusCodes[2] = (byte)(response2[5] & 0x0F);
+                statusCodes[0] = (byte)(response[3] & 0x0F);
+                statusCodes[1] = (byte)(response[4] & 0x0F);
+                statusCodes[2] = (byte)(response[5] & 0x0F);
                 var bits = new BitArray(statusCodes);
                 var tmpArr = new bool[12];
                 tmpArr[0] = bits[3];
@@ -170,27 +230,18 @@ namespace Creator.Lib
             }
         }
 
-        public List<HighCheckStatusCode> HighCheckStatus()
+        public List<HighCheckStatusCode> CheckHighStatus()
         {
-            var request = PrepareRequest(CommandCode.AP.ToString());
-            _serialPort.Write(request, 0, request.Length);
-            Thread.Sleep(500);
-            var response = new byte[8];
-            _serialPort.Read(response, 0, response.Length);
+            var response = SendRequestToDispenser(CommandCode.CheckHighStatus, waitForData: true);
 
-            _serialPort.Write(new[] { _frameSend }, 0, 1);
-            Thread.Sleep(500);
-            var response2 = new byte[8];
-            _serialPort.Read(response2, 0, response2.Length);
-
-            var correctCode = Encoding.ASCII.GetBytes(ResponseCode.SF.ToString());
-            if (response2[1] == correctCode[0] && response2[2] == correctCode[1])
+            var correctCode = Helpers.StringToByteArray(CommandCode.CheckStatusResponse);
+            if (response[1] == correctCode[0] && response[2] == correctCode[1])
             {
                 var statusCodes = new byte[4];
-                statusCodes[0] = (byte)(response2[3] & 0x0F);
-                statusCodes[1] = (byte)(response2[4] & 0x0F);
-                statusCodes[2] = (byte)(response2[5] & 0x0F);
-                statusCodes[3] = (byte)(response2[6] & 0x0F);
+                statusCodes[0] = (byte)(response[3] & 0x0F);
+                statusCodes[1] = (byte)(response[4] & 0x0F);
+                statusCodes[2] = (byte)(response[5] & 0x0F);
+                statusCodes[3] = (byte)(response[6] & 0x0F);
                 var bits = new BitArray(statusCodes);
                 var tmpArr = new bool[16];
                 tmpArr[0] = bits[3];
@@ -231,22 +282,26 @@ namespace Creator.Lib
             }
         }
 
-        private byte[] PrepareRequest(string command, string paramHex = null)
+        private byte[] PrepareRequest(string command, string param = null)
         {
             MemoryStream requestStream = new MemoryStream();
             requestStream.Append(_frameStart);
-            var payload = Encoding.ASCII.GetBytes(command);
-            requestStream.Append(payload);
 
-            if (paramHex != null)
+            if (command != null)
             {
-                var payload2 = Helpers.StringToByteArray(paramHex);
-                requestStream.Append(payload2);
+                var payload = Helpers.StringToByteArray(command);
+                requestStream.Append(payload);
+            }
+
+            if (param != null)
+            {
+                var payload = Helpers.StringToByteArray(param);
+                requestStream.Append(payload);
             }
 
             requestStream.Append(_frameStop);
             requestStream.Append(CalculateChecksum(requestStream.ToArray()));
-            //var hex = Helpers.ByteArrayToString(requestStream.ToArray());
+            var hex = Helpers.ByteArrayToString(requestStream.ToArray());
 
             return requestStream.ToArray();
         }
@@ -262,27 +317,147 @@ namespace Creator.Lib
             return xor;
         }
 
-
-        public enum CommandCode
+        private byte[] PrepareReaderRequest(string command, string param = null)
         {
-            DC, // Dispense Card
-            CP, // Card Capture
-            RF, // Status checking
-            AP, // High-class status checking
-            RS, // Reset,
-            IN, // Card Capture Settings Set
-            SI, // Card Capture Settings Get
-            FC, // Dispense Card to Position
+            MemoryStream requestStream = new MemoryStream();
+            requestStream.Append(_frameStart);
+
+            var payload = Helpers.StringToByteArray(command+param);
+            var sLength = BitConverter.GetBytes((short)payload.Length);
+            requestStream.Append(sLength[1]);
+            requestStream.Append(sLength[0]);
+            requestStream.Append(payload);
+
+            requestStream.Append(_frameStop);
+            requestStream.Append(CalculateChecksum(requestStream.ToArray()));
+            var hex = Helpers.ByteArrayToString(requestStream.ToArray());
+
+            return requestStream.ToArray();
         }
 
+        private byte[] PrepareReaderSeRequest(byte[] package)
+        {
+            MemoryStream requestStream = new MemoryStream();
+            requestStream.Append(_frameStart);
+            var command = Helpers.StringToByteArray(CommandCode.RfPackage);
+            requestStream.Append(command);
+            var hex1 = Helpers.ByteArrayToString(requestStream.ToArray());
+            var sLength = BitConverter.GetBytes((short)package.Length); //SLEN - Length of package
+            requestStream.Append(sLength[1]);
+            requestStream.Append(sLength[0]);
+            var hex2 = Helpers.ByteArrayToString(requestStream.ToArray());
+            var rLength = BitConverter.GetBytes((short)32); //RLEN - Estimated response length
+            requestStream.Append(rLength[1]);
+            requestStream.Append(rLength[0]);
+            var hex5 = Helpers.ByteArrayToString(requestStream.ToArray());
+            requestStream.Append(new byte[] { 10 }); // Timeout
+            var hex3 = Helpers.ByteArrayToString(requestStream.ToArray());
+            requestStream.Append(package);
+            var hex4 = Helpers.ByteArrayToString(requestStream.ToArray());
+            requestStream.Append(_frameStop);
+            requestStream.Append(CalculateChecksum(requestStream.ToArray()));
+            var hex = Helpers.ByteArrayToString(requestStream.ToArray());
 
+            return requestStream.ToArray();
+        }
+
+        private byte[] ParseReaderSeResponse(byte[] response)
+        {
+            response = response.TrimEnd();
+            if (response[0] != _frameStart || response[response.Length - 2] != _frameStop) throw new Exception("Package from reader has invalid start/stop flags!");
+            if (response[response.Length - 1] != CalculateChecksum(response.RemoveLastByte())) throw new Exception("Package from reader has invalid checksum!");
+            var se = Helpers.StringToByteArray(CommandCode.RfPackage);
+            if (response[1] != se[0] || response[2] != se[1]) throw new Exception("Package from reader has invalid command param!");
+            var length = BitConverter.ToInt16(new byte[] { response[4], response[3] }, 0);
+            var dataLength = response.Length - 7; // START + S + E + LENGTH (2 byte) + STOP + BCC
+            if (length != dataLength) throw new Exception("Package from reader has invalid data length!");
+            var data = new byte[dataLength];
+            for (var i = 0; i < dataLength; i++)
+            {
+                data[i] = response[i + 5]; // START + S + E + LENGTH (2 byte)
+            }
+
+            return data;
+        }
+
+        private byte[] ParseReaderResponse(byte[] response, string command)
+        {
+            response = response.TrimEnd();
+            if (response[0] != _frameStart || response[response.Length - 2] != _frameStop) throw new Exception("Package from reader has invalid start/stop flags!");
+            if (response[response.Length - 1] != CalculateChecksum(response.RemoveLastByte())) throw new Exception("Package from reader has invalid checksum!");
+            var se = Helpers.StringToByteArray(command);
+            if (response[3] != se[0] || response[4] != se[1]) throw new Exception("Package from reader has invalid command param!");
+            var length = BitConverter.ToInt16(new byte[] { response[2], response[1] }, 0);
+            var dataLength = response.Length - 7; // START + LENGTH (2 byte) + STOP + BCC
+            if (length-2 != dataLength) throw new Exception("Package from reader has invalid data length!");
+            var data = new byte[dataLength];
+            for (var i = 0; i < dataLength; i++)
+            {
+                data[i] = response[i + 5]; // START + LENGTH (2 bytes) + COMMAND (2 bytes)
+            }
+
+            return data;
+        }
+
+        private byte[] ParseDispenserResponse(byte[] response)
+        {
+            response = response.TrimEnd();
+            if (response[0] != _frameStart || response[response.Length - 2] != _frameStop) throw new Exception("Package from reader has invalid start/stop flags!");
+            if (response[response.Length - 1] != CalculateChecksum(response.RemoveLastByte())) throw new Exception("Package from reader has invalid checksum!");
+
+            var dataLength = response.Length - 5; // START + COMMAND + COMMAND +  STOP + BCC
+
+            var data = new byte[dataLength];
+            for (var i = 0; i < dataLength; i++)
+            {
+                data[i] = response[i + 3]; // START + COMMAND + COMMAND
+            }
+
+            return data;
+        }
+
+        public static class CommandCode
+        {
+            public const string DispenseCard = "4443"; // DC
+            public const string CaptureCard = "4350"; // CP
+            public const string CheckStatus = "5246"; // RF
+            public const string CheckHighStatus = "4150"; // AP
+            public const string Reset = "5253"; // RS
+            public const string SetCaptureMode = "494E"; // IN
+            public const string GetCaptureMode = "5349"; // SI
+            public const string MoveCard = "4643"; // FC
+
+            public const string CheckStatusResponse = "5346"; // SF - Not for sending
+
+            public const string Execute = "05"; // ENQ
+            public const string RfPackage = "5345"; // SE
+
+            public const string RfCheckSectorPassword = "3532"; // Seek Card
+            public const string RfReadCardSerial = "3531"; // Seek Card
+            public const string RfCardSeek = "3530"; // Seek Card
+            public const string RfBeepOn = "353F01"; // Beep On
+            public const string RfBeepOff = "353F00"; // Beep Off
+            public const string RfReset = "3030"; // Reset Reader
+        }
 
         public enum ResponseCode
         {
             Positive = 06,
             Negative = 15,
             Cancle = 04,
-            SF, //Status Checking Return
+            PasswordOk,
+            PasswordError,
+            FailToSeek,
+
+
+        }
+
+        private static class RfResponseCode
+        {
+            public const string Positive = "59"; // Y
+            public const string Negative = "4E"; // N
+            public const string FailToSeekCard = "30"; // 0
+            public const string PasswordError = "33"; // 3
         }
 
         public enum CheckStatusCode
@@ -303,22 +478,22 @@ namespace Creator.Lib
 
         public enum HighCheckStatusCode
         {
-           Reserved0 = 0,
-           Reserved1 = 1,
-           FailureAlarm = 2,
-           CardBinIsFull = 3,
-           CardIsDispensing = 4,
-           CardIsCapturing = 5,
-           CardDispenseError = 6, 
-           CardCaptureError = 7,
-           NoCapture = 8,
-           CardOverlapped = 9,
-           CardJam = 10,
-           CardPreEmptyStatus = 11,
-           CardEmptyStatus = 12,
-           DispSensorStatus = 13,
-           CaptureSensor2Status = 14,
-           CaptureSensor1Status = 15
+            Reserved0 = 0,
+            Reserved1 = 1,
+            FailureAlarm = 2,
+            CardBinIsFull = 3,
+            CardIsDispensing = 4,
+            CardIsCapturing = 5,
+            CardDispenseError = 6,
+            CardCaptureError = 7,
+            NoCapture = 8,
+            CardOverlapped = 9,
+            CardJam = 10,
+            CardPreEmptyStatus = 11,
+            CardEmptyStatus = 12,
+            DispSensorStatus = 13,
+            CaptureSensor2Status = 14,
+            CaptureSensor1Status = 15
         }
 
         public enum CaptureMode
@@ -330,19 +505,13 @@ namespace Creator.Lib
 
         public enum CardPosition
         {
-            First = 30,
-            Second = 34,
+            FallOut = 30,
+            Out = 34,
             Third = 33,
             Fourth = 32,
             Fifth = 31,
             Sixth = 36,
             Seventh = 37
-        }
-
-        public enum RfCommands
-        {
-            Seek = 00023530, // Seek Card
-         
         }
     }
 }
