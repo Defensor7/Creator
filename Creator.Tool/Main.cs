@@ -31,7 +31,10 @@ namespace Creator.Tool
 
             comboBoxPositions.DataSource = Enum.GetValues(typeof(Crt570.CardPosition));
 
-            comboBoxSector.Items.AddRange(Enumerable.Range(1, 16).Select(i => (object)i).ToArray());
+            comboBoxSector.Items.AddRange(Enumerable.Range(0, 16).Select(i => (object)i).ToArray());
+            comboBoxSector.SelectedIndex = 0;
+            comboBoxBlock.Items.AddRange(Enumerable.Range(0, 4).Select(i => (object)i).ToArray());
+            comboBoxBlock.SelectedIndex = 0;
         }
 
         private void ShowResult(string result)
@@ -53,13 +56,14 @@ namespace Creator.Tool
         {
             DispenseCard();
         }
-       
+
 
         private void DispenseCard()
         {
-            try{
-            var res = _device.DispenseCard();
-            ShowResult(res.ToString());
+            try
+            {
+                var res = _device.DispenseCard();
+                ShowResult(res.ToString());
             }
             catch (Exception ex)
             {
@@ -86,7 +90,7 @@ namespace Creator.Tool
             {
                 var res = _device.CheckStatus();
                 var resString = res.Select(x => x.ToString()).ToList();
-                for (int i = 0; i < listViewStatusCheckingResult.Items.Count; i++)
+                for (var i = 0; i < listViewStatusCheckingResult.Items.Count; i++)
                 {
                     if (resString.Contains(listViewStatusCheckingResult.Items[i].Text))
                     {
@@ -110,7 +114,7 @@ namespace Creator.Tool
             {
                 var res = _device.CheckHighStatus();
                 var resString = res.Select(x => x.ToString()).ToList();
-                for (int i = 0; i < listViewStatusHighCheckingResult.Items.Count; i++)
+                for (var i = 0; i < listViewStatusHighCheckingResult.Items.Count; i++)
                 {
                     if (resString.Contains(listViewStatusHighCheckingResult.Items[i].Text))
                     {
@@ -132,7 +136,7 @@ namespace Creator.Tool
         {
             try
             {
-               var position = (Crt570.CardPosition)comboBoxPositions.SelectedValue;
+                var position = (Crt570.CardPosition)comboBoxPositions.SelectedValue;
 
                 var res = _device.SetCardPosition(position);
                 ShowResult(res.ToString());
@@ -176,7 +180,7 @@ namespace Creator.Tool
 
                 var res = _device.GetCaptureMode();
                 if (res == Crt570.CaptureMode.Prohibit) radioButtonCaptureProhibit.Checked = true;
-                if (res == Crt570.CaptureMode.Allow) radioButtonCaptureAllow.Checked = true; 
+                if (res == Crt570.CaptureMode.Allow) radioButtonCaptureAllow.Checked = true;
                 if (res == Crt570.CaptureMode.AllowReadWrite) radioButtonCaptureAllowReadWrite.Checked = true;
                 ShowResult(res.ToString());
 
@@ -265,13 +269,78 @@ namespace Creator.Tool
             }
         }
 
-        private void RfCheckSectorPassword()
+        private void RfCheckSectorPasswordA()
         {
             try
             {
                 var sector = (int)comboBoxSector.SelectedItem;
                 var password = textBoxSectorPassword.Text;
-                var res = _device.RfCheckSectorPassword(sector, password);
+                var res = _device.RfCheckSectorPasswordA(sector, password);
+                ShowResult(res.ToString());
+            }
+            catch (Exception ex)
+            {
+                ShowResult(ex.Message);
+            }
+        }
+
+        private void RfCheckSectorPasswordB()
+        {
+            try
+            {
+                var sector = (int)comboBoxSector.SelectedItem;
+                var password = textBoxSectorPassword.Text;
+                var res = _device.RfCheckSectorPasswordB(sector, password);
+                ShowResult(res.ToString());
+            }
+            catch (Exception ex)
+            {
+                ShowResult(ex.Message);
+            }
+        }
+
+        private void RfReadBlock()
+        {
+            try
+            {
+                var sector = (int)comboBoxSector.SelectedItem;
+                var block = (int)comboBoxBlock.SelectedItem;
+
+                var res = _device.RfReadBlockHex(sector, block);
+                ShowResult(res.ToString());
+            }
+            catch (Exception ex)
+            {
+                ShowResult(ex.Message);
+            }
+        }
+
+        private void RfWriteBlock()
+        {
+            try
+            {
+                var sector = (int)comboBoxSector.SelectedItem;
+                var block = (int)comboBoxBlock.SelectedItem;
+                var data = textBoxBlockData.Text.Trim().ToUpper();
+
+                var res = _device.RfWriteBlockHex(sector, block, data);
+                ShowResult(res.ToString());
+            }
+            catch (Exception ex)
+            {
+                ShowResult(ex.Message);
+            }
+        }
+
+        private void RfChangeSectorPassword()
+        {
+            try
+            {
+                var sector = (int)comboBoxSector.SelectedItem;
+                var passwordA = textBoxPasswordA.Text;
+                var passwordB = textBoxPasswordB.Text;
+
+                var res = _device.RfChangeSectorPasswords(sector, passwordA, passwordB);
                 ShowResult(res.ToString());
             }
             catch (Exception ex)
@@ -392,7 +461,27 @@ namespace Creator.Tool
 
         private void buttonCheckSectorPassword_Click(object sender, EventArgs e)
         {
-            RfCheckSectorPassword();
+            RfCheckSectorPasswordA();
+        }
+
+        private void buttonCheckSectorPasswordB_Click(object sender, EventArgs e)
+        {
+            RfCheckSectorPasswordB();
+        }
+
+        private void buttonReadBlock_Click(object sender, EventArgs e)
+        {
+            RfReadBlock();
+        }
+
+        private void buttonWriteBlock_Click(object sender, EventArgs e)
+        {
+            RfWriteBlock();
+        }
+
+        private void buttonChangePasswords_Click(object sender, EventArgs e)
+        {
+            RfChangeSectorPassword();
         }
     }
 }
