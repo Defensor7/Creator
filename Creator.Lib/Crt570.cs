@@ -25,8 +25,8 @@ namespace Creator.Lib
                 DataBits = 8,
                 StopBits = StopBits.One,
                 Handshake = Handshake.None,
-                ReadTimeout = 5000,
-                WriteTimeout = 5000
+                ReadTimeout = 10000,
+                WriteTimeout = 10000
             };
             _serialPort.Open();
         }
@@ -58,7 +58,7 @@ namespace Creator.Lib
         public ResponseCode RfReset()
         {
             var response = SendRequestToReader(CommandCode.RfReset);
-            var hex = Helpers.ByteArrayToString(new[] { response[0] });
+            //var hex = Helpers.ByteArrayToString(new[] { response[0] });
             var res = (ResponseCode)response[0];
             return res;
         }
@@ -187,7 +187,6 @@ namespace Creator.Lib
                 default:
                     return ResponseCode.Negative;
             }
-
         }
 
         public ResponseCode RfChangeSectorPasswords(int sector, string passwordA, string passwordB, string storageArea = null)
@@ -214,12 +213,14 @@ namespace Creator.Lib
             }
         }
 
-        private byte[] SendRequestToReader(string command, string param = null, bool waitForAck = true, bool waitForData = false)
+        private byte[] SendRequestToReader(string command, string param = null, bool waitForAck = true, bool waitForData = false, int timeout1 = 750, int timeout2 = 750)
         {
+            _serialPort.DiscardInBuffer();
+            _serialPort.DiscardOutBuffer();
             var package = PrepareReaderRequest(command, param);
             var request = PrepareReaderSeRequest(package);
             _serialPort.Write(request, 0, request.Length);
-            Thread.Sleep(750);
+            Thread.Sleep(timeout1);
             var response = new byte[32];
             _serialPort.Read(response, 0, response.Length);
             var data = new byte[32];
@@ -228,36 +229,42 @@ namespace Creator.Lib
                 data = ParseReaderSeResponse(response);
                 if ((ResponseCode)data[0] != ResponseCode.Positive) throw new Exception("Received not Positive ACK");
             }
-
+            _serialPort.DiscardInBuffer();
+            _serialPort.DiscardOutBuffer();
             var requestExecute = PrepareReaderSeRequest(new[] { _frameSend });
             _serialPort.Write(requestExecute, 0, requestExecute.Length);
 
             if (waitForData)
             {
-                Thread.Sleep(750);
+                //Array.Clear(data, 0, data.Length);
+                Thread.Sleep(timeout2);
                 var responseData = new byte[64];
                 _serialPort.Read(responseData, 0, responseData.Length);
                 var dataSe = ParseReaderSeResponse(responseData);
-                var hex = Helpers.ByteArrayToString(dataSe);
+                //var hex = Helpers.ByteArrayToString(dataSe);
                 data = ParseReaderResponse(dataSe, command);
             }
 
             return data;
         }
 
-        private byte[] SendRequestToDispenser(string command, string param = null, bool waitForAck = true, bool waitForData = false)
+        private byte[] SendRequestToDispenser(string command, string param = null, bool waitForAck = true, bool waitForData = false, int timeout1 = 750, int timeout2 = 750)
         {
+            _serialPort.DiscardInBuffer();
+            _serialPort.DiscardOutBuffer();
             var request = PrepareRequest(command, param);
             _serialPort.Write(request, 0, request.Length);
-            Thread.Sleep(750);
+            Thread.Sleep(timeout1);
             var response = new byte[32];
             _serialPort.Read(response, 0, response.Length);
             if (waitForAck) { if ((ResponseCode)response[0] != ResponseCode.Positive) throw new Exception("Received not Positive ACK"); }
+            _serialPort.DiscardInBuffer();
+            _serialPort.DiscardOutBuffer();
             _serialPort.Write(new[] { _frameSend }, 0, 1);
 
             if (waitForData)
             {
-                Thread.Sleep(750);
+                Thread.Sleep(timeout2);
                 var data = new byte[32];
                 _serialPort.Read(data, 0, data.Length);
                 return data.TrimEnd();
@@ -427,8 +434,7 @@ namespace Creator.Lib
 
             requestStream.Append(_frameStop);
             requestStream.Append(CalculateChecksum(requestStream.ToArray()));
-            //var hex = Helpers.ByteArrayToString(requestStream.ToArray());
-
+          
             return requestStream.ToArray();
         }
 
@@ -439,7 +445,6 @@ namespace Creator.Lib
             for (var i = 0; i < request.Length; i++)
                 xor ^= request[i];
 
-
             return xor;
         }
 
@@ -447,17 +452,13 @@ namespace Creator.Lib
         {
             var requestStream = new MemoryStream();
             requestStream.Append(_frameStart);
-
             var payload = Helpers.StringToByteArray(command + param);
             var sLength = BitConverter.GetBytes((short)payload.Length);
             requestStream.Append(sLength[1]);
             requestStream.Append(sLength[0]);
             requestStream.Append(payload);
-
             requestStream.Append(_frameStop);
             requestStream.Append(CalculateChecksum(requestStream.ToArray()));
-            //var hex = Helpers.ByteArrayToString(requestStream.ToArray());
-
             return requestStream.ToArray();
         }
 
@@ -467,30 +468,23 @@ namespace Creator.Lib
             requestStream.Append(_frameStart);
             var command = Helpers.StringToByteArray(CommandCode.RfPackage);
             requestStream.Append(command);
-            //var hex1 = Helpers.ByteArrayToString(requestStream.ToArray());
             var sLength = BitConverter.GetBytes((short)package.Length); //SLEN - Length of package
             requestStream.Append(sLength[1]);
             requestStream.Append(sLength[0]);
-            //var hex2 = Helpers.ByteArrayToString(requestStream.ToArray());
             var rLength = BitConverter.GetBytes((short)32); //RLEN - Estimated response length
             requestStream.Append(rLength[1]);
             requestStream.Append(rLength[0]);
-            //var hex5 = Helpers.ByteArrayToString(requestStream.ToArray());
             requestStream.Append(new byte[] { 10 }); // Timeout
-            //var hex3 = Helpers.ByteArrayToString(requestStream.ToArray());
             requestStream.Append(package);
-            //var hex4 = Helpers.ByteArrayToString(requestStream.ToArray());
             requestStream.Append(_frameStop);
             requestStream.Append(CalculateChecksum(requestStream.ToArray()));
-            //var hex = Helpers.ByteArrayToString(requestStream.ToArray());
-
             return requestStream.ToArray();
         }
 
         private byte[] ParseReaderSeResponse(byte[] response)
         {
             response = response.TrimEnd();
-            if (response[0] != _frameStart || response[response.Length - 2] != _frameStop) throw new Exception("Package from reader has invalid start/stop flags!");
+            if (response[0] != _frameStart || response[response.Length - 2] != _frameStop) throw new Exception($"Package from reader has invalid start/stop flags! Data = {Helpers.ByteArrayToString(response)}");
             if (response[response.Length - 1] != CalculateChecksum(response.RemoveLastByte())) throw new Exception("Package from reader has invalid checksum!");
             var se = Helpers.StringToByteArray(CommandCode.RfPackage);
             if (response[1] != se[0] || response[2] != se[1]) throw new Exception("Package from reader has invalid command param!");
@@ -509,7 +503,7 @@ namespace Creator.Lib
         private byte[] ParseReaderResponse(byte[] response, string command)
         {
             response = response.TrimEnd();
-            if (response[0] != _frameStart || response[response.Length - 2] != _frameStop) throw new Exception("Package from reader has invalid start/stop flags!");
+            if (response[0] != _frameStart || response[response.Length - 2] != _frameStop) throw new Exception($"Package from reader has invalid start/stop flags! Data = {Helpers.ByteArrayToString(response)}");
             if (response[response.Length - 1] != CalculateChecksum(response.RemoveLastByte())) throw new Exception("Package from reader has invalid checksum!");
             var se = Helpers.StringToByteArray(command);
             if (response[3] != se[0] || response[4] != se[1]) throw new Exception("Package from reader has invalid command param!");
@@ -528,7 +522,7 @@ namespace Creator.Lib
         private byte[] ParseDispenserResponse(byte[] response)
         {
             response = response.TrimEnd();
-            if (response[0] != _frameStart || response[response.Length - 2] != _frameStop) throw new Exception("Package from reader has invalid start/stop flags!");
+            if (response[0] != _frameStart || response[response.Length - 2] != _frameStop) throw new Exception($"Package from reader has invalid start/stop flags! Data = {Helpers.ByteArrayToString(response)}");
             if (response[response.Length - 1] != CalculateChecksum(response.RemoveLastByte())) throw new Exception("Package from reader has invalid checksum!");
 
             var dataLength = response.Length - 5; // START + COMMAND + COMMAND +  STOP + BCC
@@ -552,12 +546,9 @@ namespace Creator.Lib
             public const string SetCaptureMode = "494E"; // IN
             public const string GetCaptureMode = "5349"; // SI
             public const string MoveCard = "4643"; // FC
-
             public const string CheckStatusResponse = "5346"; // SF - Not for sending
-
             public const string Execute = "05"; // ENQ
             public const string RfPackage = "5345"; // SE
-
 
             //public const string RfChangeSectorPasswords = "3535"; //
             public const string RfWriteBlock = "3534"; //
@@ -573,6 +564,7 @@ namespace Creator.Lib
 
         public enum ResponseCode
         {
+            NoResult,
             PasswordOk,
             PasswordError,
             FailToSeek,
