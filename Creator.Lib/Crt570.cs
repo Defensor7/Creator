@@ -14,7 +14,7 @@ namespace Creator.Lib
         private byte _frameStart = 2;
         private byte _frameStop = 3;
         private byte _frameSend = 5;
-
+      
         public Crt570(string comPort)
         {
             _serialPort = new SerialPort
