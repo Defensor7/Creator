@@ -652,7 +652,7 @@
             this.labelSeekWarning.TabIndex = 28;
             this.labelSeekWarning.Text = "Always click Seek button first!";
             this.labelSeekWarning.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            this.labelSeekWarning.DoubleClick += new System.EventHandler(this.labelSeekWarning_DoubleClick);
+          
             // 
             // Main
             // 
