@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Ports;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace Creator.Lib
 {
@@ -41,47 +42,47 @@ namespace Creator.Lib
             _serialPort.Open();
         }
 
-        public ResponseCode RfBeepOn()
+        public async Task<ResponseCode> RfBeepOn()
         {
-            var response = SendRequestToReader(CommandCode.RfBeepOn, waitForData: true);
+            var response = await SendRequestToReader(CommandCode.RfBeepOn, waitForData: true);
             var hex = Helpers.ByteArrayToString(new[] { response[1] }).ToUpper();
             return hex == RfResponseCode.Positive ? ResponseCode.Positive : ResponseCode.Negative;
         }
 
-        public ResponseCode RfBeepOff()
+        public async Task<ResponseCode> RfBeepOff()
         {
-            var response = SendRequestToReader(CommandCode.RfBeepOff, waitForData: true);
+            var response = await SendRequestToReader(CommandCode.RfBeepOff, waitForData: true);
             var hex = Helpers.ByteArrayToString(new[] { response[1] }).ToUpper();
             return hex == RfResponseCode.Positive ? ResponseCode.Positive : ResponseCode.Negative;
         }
 
-        public ResponseCode RfReset()
+        public async Task<ResponseCode> RfReset()
         {
-            var response = SendRequestToReader(CommandCode.RfReset);
+            var response = await SendRequestToReader(CommandCode.RfReset);
             //var hex = Helpers.ByteArrayToString(new[] { response[0] });
             var res = (ResponseCode)response[0];
             return res;
         }
 
-        public ResponseCode RfSeekCard()
+        public async Task<ResponseCode> RfSeekCard()
         {
-            var response = SendRequestToReader(CommandCode.RfCardSeek, waitForData: true);
+            var response = await SendRequestToReader(CommandCode.RfCardSeek, waitForData: true);
             var hex = Helpers.ByteArrayToString(response).ToUpper();
             return hex == RfResponseCode.Positive ? ResponseCode.Positive : ResponseCode.Negative;
         }
 
-        public string RfReadCardSerial()
+        public async Task<string> RfReadCardSerial()
         {
-            var response = SendRequestToReader(CommandCode.RfReadCardSerial, waitForData: true);
+            var response = await SendRequestToReader(CommandCode.RfReadCardSerial, waitForData: true);
             var res = Helpers.ByteArrayToString(new[] { response[0] }).ToUpper();
             return res == RfResponseCode.Positive ? Helpers.ByteArrayToString(response).Substring(2).ToUpper() : null;
         }
 
-        public ResponseCode RfCheckSectorPasswordA(int sector, string password)
+        public async Task<ResponseCode> RfCheckSectorPasswordA(int sector, string password)
         {
             if (password.Length != 12) throw new Exception("Password must be 12 symbol length in HEX format!");
             var param = sector.ToString("X2") + password.ToUpper();
-            var response = SendRequestToReader(CommandCode.RfCheckSectorPasswordA, param, waitForData: true);
+            var response = await SendRequestToReader(CommandCode.RfCheckSectorPasswordA, param, waitForData: true);
             var res = Helpers.ByteArrayToString(new[] { response[1] }).ToUpper();
             switch (res)
             {
@@ -96,11 +97,11 @@ namespace Creator.Lib
             }
         }
 
-        public ResponseCode RfCheckSectorPasswordB(int sector, string password)
+        public async Task<ResponseCode> RfCheckSectorPasswordB(int sector, string password)
         {
             if (password.Length != 12) throw new Exception("Password must be 12 symbol length in HEX format!");
             var param = sector.ToString("X2") + password.ToUpper();
-            var response = SendRequestToReader(CommandCode.RfCheckSectorPasswordB, param, waitForData: true);
+            var response = await SendRequestToReader(CommandCode.RfCheckSectorPasswordB, param, waitForData: true);
             var res = Helpers.ByteArrayToString(new[] { response[1] }).ToUpper();
             switch (res)
             {
@@ -115,15 +116,15 @@ namespace Creator.Lib
             }
         }
 
-        public string RfReadBlockHex(int sector, int block)
+        public async Task<string> RfReadBlockHex(int sector, int block)
         {
-            return Helpers.ByteArrayToString(RfReadBlock(sector, block)).ToUpper();
+            return Helpers.ByteArrayToString(await RfReadBlock(sector, block)).ToUpper();
         }
 
-        public byte[] RfReadBlock(int sector, int block)
+        public async Task<byte[]> RfReadBlock(int sector, int block)
         {
             var param = sector.ToString("X2") + block.ToString("X2");
-            var response = SendRequestToReader(CommandCode.RfReadBlock, param, waitForData: true);
+            var response = await SendRequestToReader(CommandCode.RfReadBlock, param, waitForData: true);
             string res;
             if (response.Length != 18)
             {
@@ -162,16 +163,16 @@ namespace Creator.Lib
             }
         }
 
-        public ResponseCode RfWriteBlockHex(int sector, int block, string data)
+        public async Task<ResponseCode> RfWriteBlockHex(int sector, int block, string data)
         {
             var bytes = Helpers.StringToByteArray(data);
-            return RfWriteBlock(sector, block, bytes);
+            return await RfWriteBlock(sector, block, bytes);
         }
 
-        public ResponseCode RfWriteBlock(int sector, int block, byte[] data)
+        public async Task<ResponseCode> RfWriteBlock(int sector, int block, byte[] data)
         {
             var param = sector.ToString("X2") + block.ToString("X2") + Helpers.ByteArrayToString(data);
-            var response = SendRequestToReader(CommandCode.RfWriteBlock, param, waitForData: true);
+            var response = await SendRequestToReader(CommandCode.RfWriteBlock, param, waitForData: true);
             var res = Helpers.ByteArrayToString(new[] { response[2] }).ToUpper();
 
             switch (res)
@@ -189,13 +190,13 @@ namespace Creator.Lib
             }
         }
 
-        public ResponseCode RfChangeSectorPasswords(int sector, string passwordA, string passwordB, string storageArea = null)
+        public async Task<ResponseCode> RfChangeSectorPasswords(int sector, string passwordA, string passwordB, string storageArea = null)
         {
             if (passwordA.Length != 12 || passwordB.Length != 12) throw new Exception("Password must be 12 symbol length in HEX format!");
             if (storageArea != null && storageArea.Length != 8) throw new Exception("Storage area must be 8 symbol length in HEX format!");
             var setStorageArea = storageArea ?? "FF078069";
             var param = sector.ToString("X2") + "03" + passwordA + setStorageArea + passwordB;
-            var response = SendRequestToReader(CommandCode.RfWriteBlock, param, waitForData: true);
+            var response = await SendRequestToReader(CommandCode.RfWriteBlock, param, waitForData: true);
             var res = Helpers.ByteArrayToString(new[] { response[2] }).ToUpper();
 
             switch (res)
@@ -213,14 +214,14 @@ namespace Creator.Lib
             }
         }
 
-        private byte[] SendRequestToReader(string command, string param = null, bool waitForAck = true, bool waitForData = false, int timeout1 = 750, int timeout2 = 750)
+        private async Task<byte[]> SendRequestToReader(string command, string param = null, bool waitForAck = true, bool waitForData = false, int timeout1 = 750, int timeout2 = 750)
         {
             _serialPort.DiscardInBuffer();
             _serialPort.DiscardOutBuffer();
             var package = PrepareReaderRequest(command, param);
             var request = PrepareReaderSeRequest(package);
             _serialPort.Write(request, 0, request.Length);
-            Thread.Sleep(timeout1);
+            await Task.Delay(timeout1);
             var response = new byte[32];
             _serialPort.Read(response, 0, response.Length);
             var data = new byte[32];
@@ -237,7 +238,7 @@ namespace Creator.Lib
             if (waitForData)
             {
                 //Array.Clear(data, 0, data.Length);
-                Thread.Sleep(timeout2);
+                await Task.Delay(timeout2);
                 var responseData = new byte[64];
                 _serialPort.Read(responseData, 0, responseData.Length);
                 var dataSe = ParseReaderSeResponse(responseData);
@@ -248,13 +249,13 @@ namespace Creator.Lib
             return data;
         }
 
-        private byte[] SendRequestToDispenser(string command, string param = null, bool waitForAck = true, bool waitForData = false, int timeout1 = 750, int timeout2 = 750)
+        private async Task<byte[]> SendRequestToDispenser(string command, string param = null, bool waitForAck = true, bool waitForData = false, int timeout1 = 750, int timeout2 = 750)
         {
             _serialPort.DiscardInBuffer();
             _serialPort.DiscardOutBuffer();
             var request = PrepareRequest(command, param);
             _serialPort.Write(request, 0, request.Length);
-            Thread.Sleep(timeout1);
+            await Task.Delay(timeout1);
             var response = new byte[32];
             _serialPort.Read(response, 0, response.Length);
             if (waitForAck) { if ((ResponseCode)response[0] != ResponseCode.Positive) throw new Exception("Received not Positive ACK"); }
@@ -264,7 +265,7 @@ namespace Creator.Lib
 
             if (waitForData)
             {
-                Thread.Sleep(timeout2);
+                await Task.Delay(timeout2);
                 var data = new byte[32];
                 _serialPort.Read(data, 0, data.Length);
                 return data.TrimEnd();
@@ -273,53 +274,53 @@ namespace Creator.Lib
             return response.TrimEnd();
         }
 
-        public ResponseCode DispenseCard()
+        public async Task<ResponseCode> DispenseCard()
         {
-            var response = SendRequestToDispenser(CommandCode.DispenseCard);
+            var response = await SendRequestToDispenser(CommandCode.DispenseCard);
+            var res = (ResponseCode)response[0];
+            return res;
+        }
+        
+        public async Task<ResponseCode> CaptureCard()
+        {
+            var response = await SendRequestToDispenser(CommandCode.CaptureCard);
             var res = (ResponseCode)response[0];
             return res;
         }
 
-        public ResponseCode CaptureCard()
+        public async Task<ResponseCode> SetCardPosition(CardPosition position)
         {
-            var response = SendRequestToDispenser(CommandCode.CaptureCard);
+    var response = await SendRequestToDispenser(CommandCode.MoveCard, ((int)position).ToString());
             var res = (ResponseCode)response[0];
             return res;
         }
 
-        public ResponseCode SetCardPosition(CardPosition position)
+        public async Task<ResponseCode> SetCaptureMode(CaptureMode mode)
         {
-            var response = SendRequestToDispenser(CommandCode.MoveCard, ((int)position).ToString());
+            var response = await SendRequestToDispenser(CommandCode.SetCaptureMode, ((int)mode).ToString());
             var res = (ResponseCode)response[0];
             return res;
         }
 
-        public ResponseCode SetCaptureMode(CaptureMode mode)
+        public async Task<CaptureMode> GetCaptureMode()
         {
-            var response = SendRequestToDispenser(CommandCode.SetCaptureMode, ((int)mode).ToString());
-            var res = (ResponseCode)response[0];
-            return res;
-        }
-
-        public CaptureMode GetCaptureMode()
-        {
-            var response = SendRequestToDispenser(CommandCode.GetCaptureMode, waitForData: true);
+            var response = await SendRequestToDispenser(CommandCode.GetCaptureMode, waitForData: true);
             var data = ParseDispenserResponse(response);
             var hex = Helpers.ByteArrayToString(new[] { data[0] });
             var result = (CaptureMode)Convert.ToInt16(hex);
             return result;
         }
 
-        public ResponseCode Reset()
+        public async Task<ResponseCode> Reset()
         {
-            var response = SendRequestToDispenser(CommandCode.Reset);
+            var response = await SendRequestToDispenser(CommandCode.Reset);
             var res = (ResponseCode)response[0];
             return res;
         }
 
-        public List<CheckStatusCode> CheckStatus()
+        public async Task<List<CheckStatusCode>> CheckStatus()
         {
-            var response = SendRequestToDispenser(CommandCode.CheckStatus, waitForData: true);
+            var response = await SendRequestToDispenser(CommandCode.CheckStatus, waitForData: true);
 
             var correctCode = Helpers.StringToByteArray(CommandCode.CheckStatusResponse);
             if (response[1] == correctCode[0] && response[2] == correctCode[1])
@@ -363,9 +364,9 @@ namespace Creator.Lib
             }
         }
 
-        public List<HighCheckStatusCode> CheckHighStatus()
+        public async Task<List<HighCheckStatusCode>> CheckHighStatus()
         {
-            var response = SendRequestToDispenser(CommandCode.CheckHighStatus, waitForData: true);
+            var response = await SendRequestToDispenser(CommandCode.CheckHighStatus, waitForData: true);
 
             var correctCode = Helpers.StringToByteArray(CommandCode.CheckStatusResponse);
             if (response[1] == correctCode[0] && response[2] == correctCode[1])
