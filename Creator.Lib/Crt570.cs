@@ -11,11 +11,12 @@ namespace Creator.Lib
     public class Crt570
     {
         private readonly SerialPort _serialPort;
+        private readonly int _retryAttempt = 1;
 
         private byte _frameStart = 2;
         private byte _frameStop = 3;
         private byte _frameSend = 5;
-      
+
         public Crt570(string comPort)
         {
             _serialPort = new SerialPort
@@ -214,17 +215,35 @@ namespace Creator.Lib
             }
         }
 
-        private async Task<byte[]> SendRequestToReader(string command, string param = null, bool waitForAck = true, bool waitForData = false, int timeout1 = 750, int timeout2 = 750)
+        private async Task<byte[]> SendRequestToReader(string command, string param = null, bool waitForAck = true, bool waitForData = false, int timeout1 = 1000, int timeout2 = 1000)
         {
             _serialPort.DiscardInBuffer();
             _serialPort.DiscardOutBuffer();
             var package = PrepareReaderRequest(command, param);
             var request = PrepareReaderSeRequest(package);
-            _serialPort.Write(request, 0, request.Length);
-            await Task.Delay(timeout1);
-            var response = new byte[32];
-            _serialPort.Read(response, 0, response.Length);
             var data = new byte[32];
+            var response = new byte[32];
+            var attemptNumber = 0;
+            while (true)
+            {
+                try
+                {
+                    _serialPort.Write(request, 0, request.Length);
+                    await Task.Delay(timeout1);
+                    _serialPort.Read(response, 0, response.Length);
+                    break;
+                }
+                catch (Exception)
+                {
+                    if (attemptNumber >= _retryAttempt)
+                    {
+                        throw;
+                    }
+
+                    attemptNumber++;
+                }
+            }
+
             if (waitForAck)
             {
                 data = ParseReaderSeResponse(response);
@@ -235,18 +254,30 @@ namespace Creator.Lib
             var requestExecute = PrepareReaderSeRequest(new[] { _frameSend });
             _serialPort.Write(requestExecute, 0, requestExecute.Length);
 
-            if (waitForData)
-            {
-                //Array.Clear(data, 0, data.Length);
-                await Task.Delay(timeout2);
-                var responseData = new byte[64];
-                _serialPort.Read(responseData, 0, responseData.Length);
-                var dataSe = ParseReaderSeResponse(responseData);
-                //var hex = Helpers.ByteArrayToString(dataSe);
-                data = ParseReaderResponse(dataSe, command);
-            }
+            if (!waitForData) return data;
 
-            return data;
+            attemptNumber = 0;
+            while (true)
+            {
+                try
+                {
+                    await Task.Delay(timeout2);
+                    var responseData = new byte[64];
+                    _serialPort.Read(responseData, 0, responseData.Length);
+                    var dataSe = ParseReaderSeResponse(responseData);
+                    //var hex = Helpers.ByteArrayToString(dataSe);
+                    data = ParseReaderResponse(dataSe, command);
+                }
+                catch (Exception)
+                {
+                    if (attemptNumber >= _retryAttempt)
+                    {
+                        throw;
+                    }
+
+                    attemptNumber++;
+                }
+            }
         }
 
         private async Task<byte[]> SendRequestToDispenser(string command, string param = null, bool waitForAck = true, bool waitForData = false, int timeout1 = 750, int timeout2 = 750)
@@ -280,7 +311,7 @@ namespace Creator.Lib
             var res = (ResponseCode)response[0];
             return res;
         }
-        
+
         public async Task<ResponseCode> CaptureCard()
         {
             var response = await SendRequestToDispenser(CommandCode.CaptureCard);
@@ -290,7 +321,7 @@ namespace Creator.Lib
 
         public async Task<ResponseCode> SetCardPosition(CardPosition position)
         {
-    var response = await SendRequestToDispenser(CommandCode.MoveCard, ((int)position).ToString());
+            var response = await SendRequestToDispenser(CommandCode.MoveCard, ((int)position).ToString());
             var res = (ResponseCode)response[0];
             return res;
         }
@@ -435,7 +466,7 @@ namespace Creator.Lib
 
             requestStream.Append(_frameStop);
             requestStream.Append(CalculateChecksum(requestStream.ToArray()));
-          
+
             return requestStream.ToArray();
         }
 
