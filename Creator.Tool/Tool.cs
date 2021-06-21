@@ -55,13 +55,24 @@ namespace Creator.Tool
                 listViewStatusHighCheckingResult.Items.Add(statusCode);
             }
 
+            comboBoxPositions.DataSource = Enum.GetValues(typeof(Crt570.CardPosition));
+
+            comboBoxSector.Items.AddRange(Enumerable.Range(0, 16).Select(i => (object)i).ToArray());
+            comboBoxSector.SelectedIndex = 0;
+            comboBoxBlock.Items.AddRange(Enumerable.Range(0, 4).Select(i => (object)i).ToArray());
+            comboBoxBlock.SelectedIndex = 0;
+
             _device = device;
             groupBoxCom.Hide();
         }
 
         private void ShowResult(string result)
         {
-            textBoxResult.Text = result;
+            Invoke(new Action(() =>
+            {
+                textBoxResult.Text = result;
+            }));
+            
         }
 
         private void buttonComRefresh_Click(object sender, EventArgs e)
@@ -74,17 +85,17 @@ namespace Creator.Tool
             comboBoxPorts.DataSource = SerialPort.GetPortNames();
         }
 
-        private void buttonDispense_Click(object sender, EventArgs e)
+        private async void buttonDispense_Click(object sender, EventArgs e)
         {
-            DispenseCard();
+            await DispenseCard();
         }
 
 
-        private void DispenseCard()
+        private async Task DispenseCard()
         {
             try
             {
-                var res = _device.DispenseCard();
+                var res = await _device.DispenseCard();
                 ShowResult(res.ToString());
             }
             catch (Exception ex)
@@ -93,11 +104,11 @@ namespace Creator.Tool
             }
         }
 
-        private void CaptureCard()
+        private async Task CaptureCard()
         {
             try
             {
-                var res = _device.CaptureCard();
+                var res = await _device.CaptureCard();
                 ShowResult(res.ToString());
             }
             catch (Exception ex)
@@ -154,13 +165,13 @@ namespace Creator.Tool
             }
         }
 
-        private void SetCardPosition()
+        private async Task SetCardPosition()
         {
             try
             {
                 var position = (Crt570.CardPosition)comboBoxPositions.SelectedValue;
 
-                var res = _device.SetCardPosition(position);
+                var res = await _device.SetCardPosition(position);
                 ShowResult(res.ToString());
 
             }
@@ -170,7 +181,7 @@ namespace Creator.Tool
             }
         }
 
-        private void SetCaptureMode()
+        private async Task SetCaptureMode()
         {
             try
             {
@@ -182,7 +193,7 @@ namespace Creator.Tool
 
                 if (mode == null) throw new Exception("Capture mode not selected");
 
-                var res = _device.SetCaptureMode((Crt570.CaptureMode)mode);
+                var res = await _device.SetCaptureMode((Crt570.CaptureMode)mode);
                 ShowResult(res.ToString());
 
             }
@@ -213,11 +224,11 @@ namespace Creator.Tool
             }
         }
 
-        private void Reset()
+        private async Task Reset()
         {
             try
             {
-                var res = _device.Reset();
+                var res = await _device.Reset();
                 ShowResult(res.ToString());
             }
             catch (Exception ex)
@@ -226,11 +237,11 @@ namespace Creator.Tool
             }
         }
 
-        private void RfBeepOn()
+        private async Task RfBeepOn()
         {
             try
             {
-                var res = _device.RfBeepOn();
+                var res = await _device.RfBeepOn();
                 ShowResult(res.ToString());
             }
             catch (Exception ex)
@@ -239,11 +250,11 @@ namespace Creator.Tool
             }
         }
 
-        private void RfBeepOff()
+        private async Task RfBeepOff()
         {
             try
             {
-                var res = _device.RfBeepOff();
+                var res = await _device.RfBeepOff();
                 ShowResult(res.ToString());
             }
             catch (Exception ex)
@@ -252,11 +263,11 @@ namespace Creator.Tool
             }
         }
 
-        private void RfReset()
+        private async Task RfReset()
         {
             try
             {
-                var res = _device.RfReset();
+                var res = await _device.RfReset();
                 ShowResult(res.ToString());
             }
             catch (Exception ex)
@@ -265,11 +276,11 @@ namespace Creator.Tool
             }
         }
 
-        private void RfSeekCard()
+        private async Task RfSeekCard()
         {
             try
             {
-                var res = _device.RfSeekCard();
+                var res = await _device.RfSeekCard();
                 ShowResult(res.ToString());
             }
             catch (Exception ex)
@@ -291,13 +302,13 @@ namespace Creator.Tool
             }
         }
 
-        private void RfCheckSectorPasswordA()
+        private async Task RfCheckSectorPasswordA()
         {
             try
             {
                 var sector = (int)comboBoxSector.SelectedItem;
                 var password = textBoxSectorPassword.Text;
-                var res = _device.RfCheckSectorPasswordA(sector, password);
+                var res = await _device.RfCheckSectorPasswordA(sector, password);
                 ShowResult(res.ToString());
             }
             catch (Exception ex)
@@ -306,13 +317,13 @@ namespace Creator.Tool
             }
         }
 
-        private void RfCheckSectorPasswordB()
+        private async Task RfCheckSectorPasswordB()
         {
             try
             {
                 var sector = (int)comboBoxSector.SelectedItem;
                 var password = textBoxSectorPassword.Text;
-                var res = _device.RfCheckSectorPasswordB(sector, password);
+                var res = await _device.RfCheckSectorPasswordB(sector, password);
                 ShowResult(res.ToString());
             }
             catch (Exception ex)
@@ -321,14 +332,14 @@ namespace Creator.Tool
             }
         }
 
-        private void RfReadBlock()
+        private async Task RfReadBlock()
         {
             try
             {
                 var sector = (int)comboBoxSector.SelectedItem;
                 var block = (int)comboBoxBlock.SelectedItem;
 
-                var res = _device.RfReadBlockHex(sector, block);
+                var res = await _device.RfReadBlockHex(sector, block);
                 ShowResult(res.ToString());
             }
             catch (Exception ex)
@@ -337,7 +348,7 @@ namespace Creator.Tool
             }
         }
 
-        private void RfWriteBlock()
+        private async Task RfWriteBlock()
         {
             try
             {
@@ -345,7 +356,7 @@ namespace Creator.Tool
                 var block = (int)comboBoxBlock.SelectedItem;
                 var data = textBoxBlockData.Text.Trim().ToUpper();
 
-                var res = _device.RfWriteBlockHex(sector, block, data);
+                var res = await _device.RfWriteBlockHex(sector, block, data);
                 ShowResult(res.ToString());
             }
             catch (Exception ex)
@@ -354,7 +365,7 @@ namespace Creator.Tool
             }
         }
 
-        private void RfChangeSectorPassword()
+        private async Task RfChangeSectorPassword()
         {
             try
             {
@@ -362,7 +373,7 @@ namespace Creator.Tool
                 var passwordA = textBoxPasswordA.Text;
                 var passwordB = textBoxPasswordB.Text;
 
-                var res = _device.RfChangeSectorPasswords(sector, passwordA, passwordB);
+                var res = await _device.RfChangeSectorPasswords(sector, passwordA, passwordB);
                 ShowResult(res.ToString());
             }
             catch (Exception ex)
@@ -395,7 +406,7 @@ namespace Creator.Tool
             CheckHighStatus();
         }
 
-        private void buttonCaptureApply_Click(object sender, EventArgs e)
+        private async void buttonCaptureApply_Click(object sender, EventArgs e)
         {
             SetCaptureMode();
         }
@@ -436,74 +447,74 @@ namespace Creator.Tool
             }
         }
 
-        private void buttonCaptureGet_Click(object sender, EventArgs e)
+        private  void buttonCaptureGet_Click(object sender, EventArgs e)
         {
-            GetCaptureMode();
+             GetCaptureMode();
         }
 
-        private void buttonSetPosition_Click(object sender, EventArgs e)
+        private  void buttonSetPosition_Click(object sender, EventArgs e)
         {
-            SetCardPosition();
+             SetCardPosition();
         }
 
-        private void buttonCapture_Click(object sender, EventArgs e)
+        private  void buttonCapture_Click(object sender, EventArgs e)
         {
-            CaptureCard();
+             CaptureCard();
         }
 
-        private void buttonMifareSeek_Click(object sender, EventArgs e)
+        private  void buttonMifareSeek_Click(object sender, EventArgs e)
         {
-            RfSeekCard();
+             RfSeekCard();
         }
 
-        private void buttonReset_Click(object sender, EventArgs e)
+        private  void buttonReset_Click(object sender, EventArgs e)
         {
-            Reset();
+             Reset();
         }
 
-        private void buttonBeep_Click(object sender, EventArgs e)
+        private  void buttonBeep_Click(object sender, EventArgs e)
         {
-            RfBeepOn();
+             RfBeepOn();
         }
 
-        private void buttonRfReset_Click(object sender, EventArgs e)
+        private  void buttonRfReset_Click(object sender, EventArgs e)
         {
-            RfReset();
+             RfReset();
         }
 
-        private void buttonOff_Click(object sender, EventArgs e)
+        private  void buttonOff_Click(object sender, EventArgs e)
         {
-            RfBeepOff();
+             RfBeepOff();
         }
 
-        private void buttonMifareReadCardSerial_Click(object sender, EventArgs e)
+        private  void buttonMifareReadCardSerial_Click(object sender, EventArgs e)
         {
-            RfReadCardSerial();
+             RfReadCardSerial();
         }
 
-        private void buttonCheckSectorPassword_Click(object sender, EventArgs e)
+        private  void buttonCheckSectorPassword_Click(object sender, EventArgs e)
         {
-            RfCheckSectorPasswordA();
+             RfCheckSectorPasswordA();
         }
 
-        private void buttonCheckSectorPasswordB_Click(object sender, EventArgs e)
+        private  void buttonCheckSectorPasswordB_Click(object sender, EventArgs e)
         {
-            RfCheckSectorPasswordB();
+             RfCheckSectorPasswordB();
         }
 
-        private void buttonReadBlock_Click(object sender, EventArgs e)
+        private  void buttonReadBlock_Click(object sender, EventArgs e)
         {
-            RfReadBlock();
+             RfReadBlock();
         }
 
-        private void buttonWriteBlock_Click(object sender, EventArgs e)
+        private  void buttonWriteBlock_Click(object sender, EventArgs e)
         {
-            RfWriteBlock();
+             RfWriteBlock();
         }
 
-        private void buttonChangePasswords_Click(object sender, EventArgs e)
+        private  void buttonChangePasswords_Click(object sender, EventArgs e)
         {
-            RfChangeSectorPassword();
+             RfChangeSectorPassword();
         }
     }
 }

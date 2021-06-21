@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Ports;
+using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -11,7 +12,6 @@ namespace Creator.Lib
     public class Crt570
     {
         private readonly SerialPort _serialPort;
-        private readonly int _retryAttempt = 1;
 
         private byte _frameStart = 2;
         private byte _frameStop = 3;
@@ -45,21 +45,21 @@ namespace Creator.Lib
 
         public async Task<ResponseCode> RfBeepOn()
         {
-            var response = await SendRequestToReader(CommandCode.RfBeepOn, waitForData: true);
+            var response = await SendRequestToReader(CommandCode.RfBeepOn, waitForData: true, retry: true);
             var hex = Helpers.ByteArrayToString(new[] { response[1] }).ToUpper();
             return hex == RfResponseCode.Positive ? ResponseCode.Positive : ResponseCode.Negative;
         }
 
         public async Task<ResponseCode> RfBeepOff()
         {
-            var response = await SendRequestToReader(CommandCode.RfBeepOff, waitForData: true);
+            var response = await SendRequestToReader(CommandCode.RfBeepOff, waitForData: true, retry: true);
             var hex = Helpers.ByteArrayToString(new[] { response[1] }).ToUpper();
             return hex == RfResponseCode.Positive ? ResponseCode.Positive : ResponseCode.Negative;
         }
 
         public async Task<ResponseCode> RfReset()
         {
-            var response = await SendRequestToReader(CommandCode.RfReset);
+            var response = await SendRequestToReader(CommandCode.RfReset, retry: true);
             //var hex = Helpers.ByteArrayToString(new[] { response[0] });
             var res = (ResponseCode)response[0];
             return res;
@@ -67,14 +67,14 @@ namespace Creator.Lib
 
         public async Task<ResponseCode> RfSeekCard()
         {
-            var response = await SendRequestToReader(CommandCode.RfCardSeek, waitForData: true);
+            var response = await SendRequestToReader(CommandCode.RfCardSeek, waitForData: true, retry: true);
             var hex = Helpers.ByteArrayToString(response).ToUpper();
             return hex == RfResponseCode.Positive ? ResponseCode.Positive : ResponseCode.Negative;
         }
 
         public async Task<string> RfReadCardSerial()
         {
-            var response = await SendRequestToReader(CommandCode.RfReadCardSerial, waitForData: true);
+            var response = await SendRequestToReader(CommandCode.RfReadCardSerial, waitForData: true, retry: true);
             var res = Helpers.ByteArrayToString(new[] { response[0] }).ToUpper();
             return res == RfResponseCode.Positive ? Helpers.ByteArrayToString(response).Substring(2).ToUpper() : null;
         }
@@ -83,7 +83,7 @@ namespace Creator.Lib
         {
             if (password.Length != 12) throw new Exception("Password must be 12 symbol length in HEX format!");
             var param = sector.ToString("X2") + password.ToUpper();
-            var response = await SendRequestToReader(CommandCode.RfCheckSectorPasswordA, param, waitForData: true);
+            var response = await SendRequestToReader(CommandCode.RfCheckSectorPasswordA, param, waitForData: true, retry: true);
             var res = Helpers.ByteArrayToString(new[] { response[1] }).ToUpper();
             switch (res)
             {
@@ -102,7 +102,7 @@ namespace Creator.Lib
         {
             if (password.Length != 12) throw new Exception("Password must be 12 symbol length in HEX format!");
             var param = sector.ToString("X2") + password.ToUpper();
-            var response = await SendRequestToReader(CommandCode.RfCheckSectorPasswordB, param, waitForData: true);
+            var response = await SendRequestToReader(CommandCode.RfCheckSectorPasswordB, param, waitForData: true, retry: true);
             var res = Helpers.ByteArrayToString(new[] { response[1] }).ToUpper();
             switch (res)
             {
@@ -125,7 +125,7 @@ namespace Creator.Lib
         public async Task<byte[]> RfReadBlock(int sector, int block)
         {
             var param = sector.ToString("X2") + block.ToString("X2");
-            var response = await SendRequestToReader(CommandCode.RfReadBlock, param, waitForData: true);
+            var response = await SendRequestToReader(CommandCode.RfReadBlock, param, waitForData: true, retry: true);
             string res;
             if (response.Length != 18)
             {
@@ -173,7 +173,7 @@ namespace Creator.Lib
         public async Task<ResponseCode> RfWriteBlock(int sector, int block, byte[] data)
         {
             var param = sector.ToString("X2") + block.ToString("X2") + Helpers.ByteArrayToString(data);
-            var response = await SendRequestToReader(CommandCode.RfWriteBlock, param, waitForData: true);
+            var response = await SendRequestToReader(CommandCode.RfWriteBlock, param, waitForData: true, retry: true);
             var res = Helpers.ByteArrayToString(new[] { response[2] }).ToUpper();
 
             switch (res)
@@ -197,7 +197,7 @@ namespace Creator.Lib
             if (storageArea != null && storageArea.Length != 8) throw new Exception("Storage area must be 8 symbol length in HEX format!");
             var setStorageArea = storageArea ?? "FF078069";
             var param = sector.ToString("X2") + "03" + passwordA + setStorageArea + passwordB;
-            var response = await SendRequestToReader(CommandCode.RfWriteBlock, param, waitForData: true);
+            var response = await SendRequestToReader(CommandCode.RfWriteBlock, param, waitForData: true, retry: true);
             var res = Helpers.ByteArrayToString(new[] { response[2] }).ToUpper();
 
             switch (res)
@@ -215,67 +215,57 @@ namespace Creator.Lib
             }
         }
 
-        private async Task<byte[]> SendRequestToReader(string command, string param = null, bool waitForAck = true, bool waitForData = false, int timeout1 = 1000, int timeout2 = 1000)
+        private async Task<byte[]> SendRequestToReader(string command, string param = null, bool waitForAck = true,
+            bool waitForData = false, int timeout1 = 1000, int timeout2 = 1000, bool retry = false,
+            int retryAttempt = 1, int retryTimeout = 3000)
         {
-            _serialPort.DiscardInBuffer();
-            _serialPort.DiscardOutBuffer();
-            var package = PrepareReaderRequest(command, param);
-            var request = PrepareReaderSeRequest(package);
-            var data = new byte[32];
-            var response = new byte[32];
             var attemptNumber = 0;
             while (true)
             {
                 try
                 {
+                    _serialPort.DiscardInBuffer();
+                    _serialPort.DiscardOutBuffer();
+                    var package = PrepareReaderRequest(command, param);
+                    var request = PrepareReaderSeRequest(package);
+                    var data = new byte[32];
+                    var response = new byte[32];
+
                     _serialPort.Write(request, 0, request.Length);
                     await Task.Delay(timeout1);
                     _serialPort.Read(response, 0, response.Length);
-                    break;
-                }
-                catch (Exception)
-                {
-                    if (attemptNumber >= _retryAttempt)
+
+                    if (waitForAck)
                     {
-                        throw;
+                        data = ParseReaderSeResponse(response);
+                        if ((ResponseCode) data[0] != ResponseCode.Positive)
+                            throw new Exception("Received not Positive ACK");
                     }
 
-                    attemptNumber++;
-                }
-            }
+                    _serialPort.DiscardInBuffer();
+                    _serialPort.DiscardOutBuffer();
+                    var requestExecute = PrepareReaderSeRequest(new[] {_frameSend});
+                    _serialPort.Write(requestExecute, 0, requestExecute.Length);
 
-            if (waitForAck)
-            {
-                data = ParseReaderSeResponse(response);
-                if ((ResponseCode)data[0] != ResponseCode.Positive) throw new Exception("Received not Positive ACK");
-            }
-            _serialPort.DiscardInBuffer();
-            _serialPort.DiscardOutBuffer();
-            var requestExecute = PrepareReaderSeRequest(new[] { _frameSend });
-            _serialPort.Write(requestExecute, 0, requestExecute.Length);
+                    if (!waitForData) return data;
 
-            if (!waitForData) return data;
-
-            attemptNumber = 0;
-            while (true)
-            {
-                try
-                {
                     await Task.Delay(timeout2);
                     var responseData = new byte[64];
                     _serialPort.Read(responseData, 0, responseData.Length);
                     var dataSe = ParseReaderSeResponse(responseData);
                     //var hex = Helpers.ByteArrayToString(dataSe);
                     data = ParseReaderResponse(dataSe, command);
+                    return data;
                 }
                 catch (Exception)
                 {
-                    if (attemptNumber >= _retryAttempt)
+                    if (!retry || attemptNumber >= retryAttempt)
                     {
                         throw;
                     }
 
                     attemptNumber++;
+                    await Task.Delay(retryTimeout);
                 }
             }
         }
